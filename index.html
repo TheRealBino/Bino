@@ -554,21 +554,58 @@ document.querySelectorAll('.collapsible-toggle').forEach(button => {
       editorMode.textContent = message;
     }
 
-    function popupHtml(row) {
-      return `
-        <div style="min-width:235px;line-height:1.45;">
-          <strong>${row.millName}</strong><br>
-          Supplier: ${row.supplier}<br>
-          Material: ${row.material}<br>
-          Country: ${row.country}<br>
-          ${row.address ? `Address: ${row.address}<br>` : ''}
-          ${Number.isFinite(row.latitude) ? `Latitude: ${row.latitude}<br>` : ''}
-          ${Number.isFinite(row.longitude) ? `Longitude: ${row.longitude}<br>` : ''}
-          <br>
-          <button onclick="window.selectPointById('${row.id}')" style="padding:6px 10px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;">Edit this point</button>
-        </div>
-      `;
-    }
+    // Build popup HTML for a single row
+        function popupHtml(row) {
+          return carouselPopupHtml([row]);
+        }
+
+        // Build a carousel popup for a group of rows at the same location
+        function carouselPopupHtml(group) {
+          const uid = 'c' + Math.random().toString(36).slice(2, 8);
+          const total = group.length;
+          // Store group on window keyed by uid so arrow buttons can access it
+          window._carouselGroups = window._carouselGroups || {};
+          window._carouselGroups[uid] = group;
+          window._carouselIndex = window._carouselIndex || {};
+          window._carouselIndex[uid] = 0;
+
+          function slideHtml(row, idx) {
+            return `
+              <div style="min-width:240px;line-height:1.5;">
+                ${total > 1 ? `
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                  <button onclick="window._carouselStep('${uid}',-1)" style="background:none;border:1px solid #0f766e;border-radius:4px;cursor:pointer;padding:2px 8px;font-size:14px;">&#9664;</button>
+                  <span style="font-size:12px;color:#555;">${idx+1} / ${total}</span>
+                  <button onclick="window._carouselStep('${uid}',1)" style="background:none;border:1px solid #0f766e;border-radius:4px;cursor:pointer;padding:2px 8px;font-size:14px;">&#9654;</button>
+                </div>` : ''}
+                <strong>${row.millName}</strong><br><br>
+                Supplier: ${row.supplier}<br>
+                Material: ${row.material}<br>
+                Country: ${row.country}<br>
+                ${row.address ? `Address: ${row.address}<br>` : ''}
+                ${Number.isFinite(row.latitude) ? `Lat: ${row.latitude}<br>` : ''}
+                ${Number.isFinite(row.longitude) ? `Lng: ${row.longitude}<br>` : ''}
+                <br>
+                <button onclick="window.selectPointById('${row.id}')" style="padding:6px 10px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;">Edit this point</button>
+              </div>
+            `;
+          }
+
+          // Attach the step function to window so inline onclick can call it
+          window._carouselStep = function(id, dir) {
+            const grp = window._carouselGroups[id];
+            if (!grp) return;
+            const len = grp.length;
+            window._carouselIndex[id] = (window._carouselIndex[id] + dir + len) % len;
+            const idx = window._carouselIndex[id];
+            const popup = document.getElementById('carousel-' + id);
+            if (popup) popup.innerHTML = slideHtml(grp[idx], idx);
+          };
+
+          const idx = window._carouselIndex[uid] || 0;
+          return `<div id="carousel-${uid}">${slideHtml(group[idx], idx)}</div>`;
+        }
+
 
     function rebuildHeat(rows) {
       if (heatLayer) map.removeLayer(heatLayer);
@@ -591,20 +628,29 @@ document.querySelectorAll('.collapsible-toggle').forEach(button => {
       markerLayer.clearLayers();
       const bounds = [];
 
-      rows.forEach(row => {
-        const selected = row.id === selectedId;
-        const marker = L.circleMarker([row.latitude, row.longitude], {
-          radius: selected ? 9 : 7,
-          weight: selected ? 2 : 1,
-          color: selected ? '#7c2d12' : '#0f766e',
-          fillColor: selected ? '#fb923c' : '#14b8a6',
-          fillOpacity: 0.9
-        }).addTo(markerLayer);
+        // Group rows by lat/lng so stacked locations get a carousel marker
+        const grouped = {};
+        rows.forEach(row => {
+          const key = row.latitude + ',' + row.longitude;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(row);
+        });
 
-        marker.bindPopup(popupHtml(row));
-        marker.on('click', () => fillForm(row));
-        bounds.push([row.latitude, row.longitude]);
-      });
+        Object.values(grouped).forEach(group => {
+          const first = group[0];
+          const isSelected = group.some(r => r.id === selectedId);
+          const marker = L.circleMarker([first.latitude, first.longitude], {
+            radius: isSelected ? 9 : 7,
+            weight: isSelected ? 2 : 1,
+            color: isSelected ? '#7c2d12' : '#0f766e',
+            fillColor: isSelected ? '#fb923c' : '#14b8a6',
+            fillOpacity: 0.9
+          }).addTo(markerLayer);
+
+          marker.bindPopup(carouselPopupHtml(group));
+          marker.on('click', () => fillForm(first));
+          bounds.push([first.latitude, first.longitude]);
+        });
 
       rebuildHeat(rows);
       updateStats(rows);
