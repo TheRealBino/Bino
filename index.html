@@ -63,7 +63,7 @@ html, body {
 }
 .app {
   display: flex;
-  min-height: 100vh;
+  min-height: 100vh; max-height: 100vh; overflow: hidden;
 }
 /* Sidebar: scrolls independently */
 .sidebar {
@@ -77,7 +77,7 @@ html, body {
 .map-wrap {
   position: relative;
   flex: 1;
-  min-height: 100vh;
+  min-height: 100vh; max-height: 100vh; overflow: hidden;
 }
 #map {
   width: 100%;
@@ -255,16 +255,16 @@ html, body {
 </head>
 <body>
 <div>
-  <label for="searchInput">Search mills:</label>
-  <input id="searchInput" type="text" placeholder="Name, supplier, material, country, address..." />
+  <label for="searchInput">Search mills:</label><div class="search-wrap">
+  <input id="searchInput" type="text" placeholder="Name, supplier, material, country, address..." autocomplete="off" /><ul id="searchDropdown" class="search-dropdown"></ul></div>
 </div>
   <div class="app">
     <aside class="sidebar">
       <h1>KlimHQ Textile Mill Map</h1>
       <p class="intro">Import a spreadsheet with addresses, the site translates addresses into coordinates in the background, edit points directly on the map, and export the updated file.</p>
 
-      <div class="panel">
-        <h2>Import and export</h2>
+      <div class="panel collapsible collapsible-open" id="import-export-section">
+        <button class="collapsible-toggle" type="button">Import & Export</button><div class="collapsible-content">
         <div class="field">
           <label for="fileInput">Import Excel (.xlsx)</label>
           <input id="fileInput" type="file" accept=".xlsx,.xls" />
@@ -380,7 +380,7 @@ html, body {
     <main class="map-wrap">
       <div id="map"></div>
 <div class="floating-tools">
-  <button id="toolsToggle" class="tools-toggle" type="button">Tools ▸</button>
+  <button id="overviewBtn" class="tools-toggle" type="button" title="World overview">&#127758;</button><button id="toolsToggle" class="tools-toggle" type="button">Tools ▸</button>
   <div class="float-card">
     <strong>Import behavior</strong>
     <div class="muted">
@@ -425,7 +425,7 @@ const map = L.map('map', {
   boxZoom: true,          // allow drag box zoom
   keyboard: true,       closePopupOnClick: false          // allow +/- and arrow keys
 }).setView([20, 0], 2);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.TileLayer.extend({getTileUrl:function(c){const n=Math.pow(2,c.z);const y=((c.y%n)+n)%n;return L.Util.template(this._url,L.extend({},this.options,{x:c.x,y:y,z:c.z}));}})('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
     }).addTo(map);
@@ -751,7 +751,7 @@ function renderMapWithRows(rows) {
   }
 }
 
-async function geocodeAddress(address) {
+async function geocodeAddress(address,country,city) {
   if (!address) return null;
 
   const url =
@@ -771,7 +771,7 @@ async function geocodeAddress(address) {
 
   const results = await response.json();
   if (!results.length) {
-    const _p=address.trim().split(',').map(s=>s.trim()).filter(Boolean),_h={'Accept':'application/json','User-Agent':'KlimMillMap/1.0'};for(let _n=_p.length-1;_n>=1;_n--){try{const _r=await(await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(_p.slice(0,_n).join(', ')),{headers:_h})).json();if(_r&&_r.length)return{latitude:Number(_r[0].lat),longitude:Number(_r[0].lon)};}catch(e){}}console.warn('Nominatim returned no results for',address);
+    const _h={'Accept':'application/json','User-Agent':'KlimMillMap/1.0'};const _p=address.trim().split(',').map(s=>s.trim()).filter(Boolean);const _tryQ=async(q)=>{try{const _r=await(await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(q),{headers:_h})).json();if(_r&&_r.length)return{latitude:Number(_r[0].lat),longitude:Number(_r[0].lon)};}catch(e){}return null;};for(let _n=_p.length-1;_n>=1;_n--){const _res=await _tryQ(_p.slice(0,_n).join(', '));if(_res)return _res;}if(city&&country){const _res=await _tryQ(city+', '+country);if(_res)return _res;}if(country){const _res=await _tryQ(country);if(_res)return _res;}console.warn('Nominatim returned no results for',address);
     return null;
   }
 
@@ -787,7 +787,7 @@ async function geocodeMissingRows() {
   for (const row of allRows) {
     if ((!Number.isFinite(row.latitude) || !Number.isFinite(row.longitude)) && row.address) {
       try {
-        const coords = await geocodeAddress(row.address);
+        const coords = await geocodeAddress(row.address,row.country,row.millName);
         if (coords) {
           row.latitude = coords.latitude;
           row.longitude = coords.longitude;
