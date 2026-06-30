@@ -570,13 +570,13 @@ document.querySelectorAll('.collapsible-toggle').forEach(button => {
           window._carouselIndex[uid] = 0;
 
           function slideHtml(row, idx) {
-            return `
-              <div style="min-width:240px;line-height:1.5;">
+                        return `
+              <div style="min-width:220px;line-height:1.5;position:relative;">
                 ${total > 1 ? `
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                  <button onclick="window._carouselStep('${uid}',-1)" style="background:none;border:1px solid #0f766e;border-radius:4px;cursor:pointer;padding:2px 8px;font-size:14px;">&#9664;</button>
-                  <span style="font-size:12px;color:#555;">${idx+1} / ${total}</span>
-                  <button onclick="window._carouselStep('${uid}',1)" style="background:none;border:1px solid #0f766e;border-radius:4px;cursor:pointer;padding:2px 8px;font-size:14px;">&#9654;</button>
+                <div style="position:absolute;top:-4px;right:0;display:flex;align-items:center;gap:2px;">
+                  <button onclick="window._carouselStep('${uid}',-1)" style="background:none;border:none;cursor:pointer;padding:1px 4px;font-size:13px;color:#0f766e;line-height:1;">&#9664;</button>
+                  <span style="font-size:11px;color:#777;white-space:nowrap;">${idx+1}/${total}</span>
+                  <button onclick="window._carouselStep('${uid}',1)" style="background:none;border:none;cursor:pointer;padding:1px 4px;font-size:13px;color:#0f766e;line-height:1;">&#9654;</button>
                 </div>` : ''}
                 <strong>${row.millName}</strong><br><br>
                 Supplier: ${row.supplier}<br>
@@ -590,11 +590,7 @@ document.querySelectorAll('.collapsible-toggle').forEach(button => {
               </div>
             `;
           }
-
-          // Attach the step function to window so inline onclick can call it
-          window._carouselStep = function(id, dir) {
-            const grp = window._carouselGroups[id];
-            if (!grp) return;
+!grp) return;
             const len = grp.length;
             window._carouselIndex[id] = (window._carouselIndex[id] + dir + len) % len;
             const idx = window._carouselIndex[id];
