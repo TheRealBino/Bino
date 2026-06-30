@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<style>
+  .collapsible {
+    margin-bottom: 0.75rem;
+    border: 1px solid #000000;
+    border-radius: 4px;
+  }
+
+  .collapsible-toggle {
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem;
+    background: #FFD200;
+    color: #000000;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .collapsible-content {
+    padding: 0.6rem 0.75rem;
+    display: none; /* start hidden; JS will show/hide */
+  }
+
+  .collapsible-open .collapsible-content {
+    display: block;
+  }
+</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KlimHQ Textile Mill Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --border: #d8dee6;
+      --text: #1b2530;
+      --muted: #667085;
+      --accent: #0f766e;
+      --accent-dark: #115e59;
+      --warn: #b54708;
+      --warn-bg: #fffaeb;
+      --danger: #b42318;
+      --danger-bg: #fee4e2;
+      --success: #067647;
+      --success-bg: #ecfdf3;
+      --shadow: 0 12px 28px rgba(16, 24, 40, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+html, body {
+  height: 100%;
+  margin: 0;
+}
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+/* Sidebar: scrolls independently */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 18px;
+  overflow-y: auto;       /* sidebar gets its own scroll */
+  flex: 0 0 410px;        /* fixed sidebar width */
+}
+/* Map: stays visible in the remaining space */
+.map-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 100vh;
+}
+#map {
+  width: 100%;
+  height: 100%;
+}
+    h1 { margin: 0 0 8px; font-size: 1.7rem; }
+    .intro {
+      margin: 0 0 15px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .panel h2 { margin: 0 0 10px; font-size: 1rem; }
+    .field { margin-bottom: 11px; }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      font: inherit;
+      border-radius: 10px;
+    }
+    input, select, textarea {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    textarea {
+      min-height: 82px;
+      resize: vertical;
+    }
+    button {
+      border: none;
+      padding: 11px 12px;
+      cursor: pointer;
+      font-weight: 700;
+      background: var(--accent);
+      color: #fff;
+    }
+    button:hover { background: var(--accent-dark); }
+    .secondary {
+      background: #e5e7eb;
+      color: #101828;
+    }
+    .secondary:hover { background: #d0d5dd; }
+    .danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid #fecdca;
+    }
+    .danger:hover { background: #fecdca; }
+    .button-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .stat {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .stat .k { color: var(--muted); font-size: 0.85rem; margin-bottom: 3px; }
+    .stat .v { font-size: 1.2rem; font-weight: 700; }
+    .note, .muted {
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+    .editor-mode, .banner {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      margin-top: 4px;
+    }
+    .editor-mode {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #c2410c;
+    }
+    .banner {
+      background: var(--warn-bg);
+      border: 1px solid #fedf89;
+      color: var(--warn);
+    }
+    .status {
+      display: none;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      border: 1px solid #abefc6;
+      background: var(--success-bg);
+      color: var(--success);
+    }
+    .status.show { display: block; }
+  
+.floating-tools {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 500;
+  width: 160px;        /* default expanded width */
+}
+
+/* Tiny header button */
+.tools-toggle {
+  width: 100%;
+  padding: 3px 6px;
+  margin-bottom: 4px;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.95);
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+/* Card content */
+.float-card {
+  background: rgba(255,255,255,0.95);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 8px;
+  box-shadow: var(--shadow);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.float-card strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.8rem;
+}
+
+/* COMPACT (retracted) state */
+.floating-tools.tools-compact {
+  width: 80px;              /* extra thin */
+}
+
+.floating-tools.tools-compact .float-card {
+  padding: 3px 4px;
+  font-size: 0.7rem;
+}
+
+.floating-tools.tools-compact .muted {
+  display: none;            /* hide long description */
+}
+
+.floating-tools.tools-compact .float-card strong {
+  margin-bottom: 0;
+}
+
+/* Optional: change arrow on button when compact */
+.floating-tools.tools-compact .tools-toggle::after {
+  content: '';
+}
+  </style>
+</head>
+<body>
+<div>
+  <label for="searchInput">Search mills:</label>
+  <input id="searchInput" type="text" placeholder="Name, supplier, material, country, address..." />
+</div>
+  <div class="app">
+    <aside class="sidebar">
+      <h1>KlimHQ Textile Mill Map</h1>
+      <p class="intro">Import a spreadsheet with addresses, the site translates addresses into coordinates in the background, edit points directly on the map, and export the updated file.</p>
+
+      <div class="panel">
+        <h2>Import and export</h2>
+        <div class="field">
+          <label for="fileInput">Import Excel (.xlsx)</label>
+          <input id="fileInput" type="file" accept=".xlsx,.xls" />
+        </div>
+        <div class="button-grid">
+          <button id="exportBtn" type="button">Export XLSX</button>
+          <button id="resetViewBtn" type="button" class="secondary">Reset world view</button>
+        </div>
+        <p>
+  Spreadsheet columns: Mill Name, Supplier, Material, Country, Address
+  (site geocode will automatically translate latitude/longitude coordinates).
+</p>
+        <span class="banner">Background geocoding may be slow for large files and depends on online lookup results.</span>
+      </div>
+
+      <div class="panel collapsible collapsible-open">
+  <button class="collapsible-toggle" type="button">Filters</button>
+  <div class="collapsible-content">
+    <div class="field">
+      <label for="materialFilter">Material</label>
+      <select id="materialFilter"><option value="">All materials</option></select>
+    </div>
+    <div class="field">
+      <label for="supplierFilter">Supplier</label>
+      <select id="supplierFilter"><option value="">All suppliers</option></select>
+    </div>
+    <div class="field">
+      <label for="countryFilter">Country</label>
+      <select id="countryFilter"><option value="">All countries</option></select>
+    </div>
+    <div class="button-grid">
+      <button id="resetFiltersBtn" type="button" class="secondary">Reset filters</button>
+      <button id="toggleHeatBtn" type="button" class="secondary">Hide heatmap</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel collapsible">
+  <button class="collapsible-toggle" type="button">Summary</button>
+  <div class="collapsible-content">
+    <div class="stats">
+      <div class="stat"><div class="k">Visible mills</div><div class="v" id="visibleCount">0</div></div>
+      <div class="stat"><div class="k">Suppliers</div><div class="v" id="supplierCount">0</div></div>
+      <div class="stat"><div class="k">Countries</div><div class="v" id="countryCount">0</div></div>
+      <div class="stat"><div class="k">Materials</div><div class="v" id="materialCount">0</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="panel collapsible">
+  <button class="collapsible-toggle" type="button">Point editor</button>
+  <div class="collapsible-content">
+    <p class="muted">Click the map to add a point manually, or click an existing marker to edit the loaded data.</p>
+    <span class="editor-mode" id="editorMode">No point selected</span>
+
+    <div class="field">
+      <label for="millNameInput">Mill Name</label>
+      <input id="millNameInput" type="text" placeholder="Example Mill" />
+    </div>
+    <div class="field">
+      <label for="supplierInput">Supplier</label>
+      <input id="supplierInput" type="text" placeholder="Supplier name" />
+    </div>
+    <div class="field">
+      <label for="materialInput">Material</label>
+      <input id="materialInput" type="text" placeholder="Material type" />
+    </div>
+    <div class="field">
+      <label for="countryInput">Country</label>
+      <input id="countryInput" type="text" placeholder="Country" />
+    </div>
+    <div class="field">
+      <label for="addressInput">Address</label>
+      <textarea id="addressInput" placeholder="Physical address retained in record"></textarea>
+    </div>
+    <div class="button-grid">
+      <div class="field">
+        <label for="latitudeInput">Latitude</label>
+        <input id="latitudeInput" type="number" step="any" placeholder="Auto-filled or manual" />
+      </div>
+      <div class="field">
+        <label for="longitudeInput">Longitude</label>
+        <input id="longitudeInput" type="number" step="any" placeholder="Auto-filled or manual" />
+      </div>
+    </div>
+    <div class="button-grid">
+      <button id="savePointBtn" type="button">Save point</button>
+      <button id="newPointBtn" type="button" class="secondary">New blank form</button>
+    </div>
+    <div class="field" style="margin-top:10px;">
+      <button id="geocodeSelectedBtn" type="button" class="secondary">Geocode current address</button>
+    </div>
+    <div class="field">
+      <button id="deletePointBtn" type="button" class="danger">Delete selected point</button>
+    </div>
+    <div id="statusBox" class="status"></div>
+  </div>
+</div>
+
+<!--
+<div class="panel">
+  <h2>Workflow</h2>
+  <span class="tag">Import workbook</span>
+  <span class="tag">Auto-populate map</span>
+  <span class="tag">Retain address text</span>
+  <span class="tag">Export updated file</span>
+  <p class="note">Imported rows keep the original address text...</p>
+</div>
+-->
+    </aside>
+
+    <main class="map-wrap">
+      <div id="map"></div>
+<div class="floating-tools">
+  <button id="toolsToggle" class="tools-toggle" type="button">Tools ▸</button>
+  <div class="float-card">
+    <strong>Import behavior</strong>
+    <div class="muted">
+      The site reads the first worksheet with SheetJS, maps your requested headers, and tries to geocode the address in the background for rows that do not already have coordinates.
+    </div>
+  </div>
+</div>
+    </main>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// Disable Leaflet's automatic refocus scroll, but not zoom
+L.Control.prototype._refocusOnMap = function _refocusOnMap() {};
+</script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <script>
+const API_BASE = '/api/mills';
+
+    const sampleRows = [{
+      id: crypto.randomUUID(),
+      millName: 'Example Mill',
+      supplier: 'Example Supplier',
+      material: 'Example Material',
+      country: 'United States',
+      address: 'Raleigh, North Carolina, USA',
+      latitude: 35.7796,
+      longitude: -78.6382
+    }];
+
+    let allRows = [];
+    let selectedId = null;
+    let heatVisible = true;
+    let heatLayer = null;
+    const markerLayer = L.layerGroup();
+
+const map = L.map('map', {
+  worldCopyJump: true,
+  scrollWheelZoom: true,  // allow mouse wheel zoom
+  doubleClickZoom: true,  // allow double-click zoom
+  boxZoom: true,          // allow drag box zoom
+  keyboard: true          // allow +/- and arrow keys
+}).setView([20, 0], 2);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
+    }).addTo(map);
+    markerLayer.addTo(map);
+
+window.addEventListener('resize', () => {
+  map.invalidateSize();
+});
+
+    const fileInput = document.getElementById('fileInput');
+    const exportBtn = document.getElementById('exportBtn');
+    const resetViewBtn = document.getElementById('resetViewBtn');
+    const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+    const toggleHeatBtn = document.getElementById('toggleHeatBtn');
+    const materialFilter = document.getElementById('materialFilter');
+    const supplierFilter = document.getElementById('supplierFilter');
+    const countryFilter = document.getElementById('countryFilter');
+    const savePointBtn = document.getElementById('savePointBtn');
+    const newPointBtn = document.getElementById('newPointBtn');
+    const geocodeSelectedBtn = document.getElementById('geocodeSelectedBtn');
+    const deletePointBtn = document.getElementById('deletePointBtn');
+    const editorMode = document.getElementById('editorMode');
+    const statusBox = document.getElementById('statusBox');
+
+    const millNameInput = document.getElementById('millNameInput');
+    const supplierInput = document.getElementById('supplierInput');
+    const materialInput = document.getElementById('materialInput');
+    const countryInput = document.getElementById('countryInput');
+    const addressInput = document.getElementById('addressInput');
+    const latitudeInput = document.getElementById('latitudeInput');
+    const longitudeInput = document.getElementById('longitudeInput');
+    const searchInput = document.getElementById('searchInput');
+
+document.querySelectorAll('.collapsible-toggle').forEach(button => {
+  button.addEventListener('click', () => {
+    const panel = button.parentElement;
+    panel.classList.toggle('collapsible-open');
+  });
+});
+
+    function showStatus(message) {
+      statusBox.textContent = message;
+      statusBox.classList.add('show');
+      clearTimeout(showStatus._t);
+      showStatus._t = setTimeout(() => statusBox.classList.remove('show'), 3600);
+    }
+
+    function makeId() {
+      return crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
+    }
+
+    function normalizeRow(row) {
+  return {
+    id: row.id || makeId(),
+    millName: String(row.mill_name || row.millName || row['Mill Name'] || '').trim() || 'Unnamed Mill',
+    supplier: String(row.supplier || row['Supplier'] || '').trim() || 'Unknown Supplier',
+    material: String(row.material || row['Material'] || '').trim() || 'Unknown Material',
+    country: String(row.country || row['Country'] || '').trim() || 'Unknown Country',
+    address: String(row.address || row['Address'] || '').trim(),
+    latitude: row.latitude !== undefined ? Number(row.latitude) :
+              row.Latitude !== undefined ? Number(row.Latitude) : NaN,
+    longitude: row.longitude !== undefined ? Number(row.longitude) :
+               row.Longitude !== undefined ? Number(row.Longitude) : NaN
+  };
+}
+
+    function setFilterOptions(selectEl, values, label) {
+      const current = selectEl.value;
+      selectEl.innerHTML = `<option value="">All ${label}</option>`;
+      values.forEach(value => {
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = value;
+        selectEl.appendChild(opt);
+      });
+      if (values.includes(current)) selectEl.value = current;
+    }
+
+    function refreshFilters() {
+      setFilterOptions(materialFilter, [...new Set(allRows.map(r => r.material))].sort(), 'materials');
+      setFilterOptions(supplierFilter, [...new Set(allRows.map(r => r.supplier))].sort(), 'suppliers');
+      setFilterOptions(countryFilter, [...new Set(allRows.map(r => r.country))].sort(), 'countries');
+    }
+
+    function geocodableRows(rows) {
+      return rows.filter(r => Number.isFinite(r.latitude) && Number.isFinite(r.longitude));
+    }
+
+    function getFilteredRows() {
+      return geocodableRows(allRows).filter(row => {
+        const materialOk = !materialFilter.value || row.material === materialFilter.value;
+        const supplierOk = !supplierFilter.value || row.supplier === supplierFilter.value;
+        const countryOk = !countryFilter.value || row.country === countryFilter.value;
+        return materialOk && supplierOk && countryOk;
+      });
+    }
+
+    function updateStats(rows) {
+      document.getElementById('visibleCount').textContent = rows.length;
+      document.getElementById('supplierCount').textContent = new Set(rows.map(r => r.supplier)).size;
+      document.getElementById('countryCount').textContent = new Set(rows.map(r => r.country)).size;
+      document.getElementById('materialCount').textContent = new Set(rows.map(r => r.material)).size;
+    }
+
+    function fillForm(row, modeText = 'Editing selected point') {
+      selectedId = row.id;
+      millNameInput.value = row.millName || '';
+      supplierInput.value = row.supplier || '';
+      materialInput.value = row.material || '';
+      countryInput.value = row.country || '';
+      addressInput.value = row.address || '';
+      latitudeInput.value = Number.isFinite(row.latitude) ? row.latitude : '';
+      longitudeInput.value = Number.isFinite(row.longitude) ? row.longitude : '';
+      editorMode.textContent = modeText;
+    }
+
+    function clearForm(message = 'No point selected') {
+      selectedId = null;
+      millNameInput.value = '';
+      supplierInput.value = '';
+      materialInput.value = '';
+      countryInput.value = '';
+      addressInput.value = '';
+      latitudeInput.value = '';
+      longitudeInput.value = '';
+      editorMode.textContent = message;
+    }
+
+    function popupHtml(row) {
+      return `
+        <div style="min-width:235px;line-height:1.45;">
+          <strong>${row.millName}</strong><br>
+          Supplier: ${row.supplier}<br>
+          Material: ${row.material}<br>
+          Country: ${row.country}<br>
+          ${row.address ? `Address: ${row.address}<br>` : ''}
+          ${Number.isFinite(row.latitude) ? `Latitude: ${row.latitude}<br>` : ''}
+          ${Number.isFinite(row.longitude) ? `Longitude: ${row.longitude}<br>` : ''}
+          <br>
+          <button onclick="window.selectPointById('${row.id}')" style="padding:6px 10px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;">Edit this point</button>
+        </div>
+      `;
+    }
+
+    function rebuildHeat(rows) {
+      if (heatLayer) map.removeLayer(heatLayer);
+      heatLayer = L.heatLayer(rows.map(r => [r.latitude, r.longitude, 1]), {
+        radius: 28,
+        blur: 22,
+        maxZoom: 8,
+        gradient: {
+          0.2: '#60a5fa',
+          0.45: '#22c55e',
+          0.7: '#f59e0b',
+          1.0: '#ef4444'
+        }
+      });
+      if (heatVisible) heatLayer.addTo(map);
+    }
+
+    function renderMap(fit = false) {
+      const rows = getFilteredRows();
+      markerLayer.clearLayers();
+      const bounds = [];
+
+      rows.forEach(row => {
+        const selected = row.id === selectedId;
+        const marker = L.circleMarker([row.latitude, row.longitude], {
+          radius: selected ? 9 : 7,
+          weight: selected ? 2 : 1,
+          color: selected ? '#7c2d12' : '#0f766e',
+          fillColor: selected ? '#fb923c' : '#14b8a6',
+          fillOpacity: 0.9
+        }).addTo(markerLayer);
+
+        marker.bindPopup(popupHtml(row));
+        marker.on('click', () => fillForm(row));
+        bounds.push([row.latitude, row.longitude]);
+      });
+
+      rebuildHeat(rows);
+      updateStats(rows);
+
+      if (fit) {
+        if (bounds.length > 1) {
+          map.fitBounds(bounds, { padding: [30, 30] });
+        } else if (bounds.length === 1) {
+          map.setView(bounds[0], 4);
+        } else {
+          map.setView([20, 0], 2);
+        }
+      }
+    }
+// General search: filter allRows by any field matching the term
+function applySearchFilter() {
+  const term = searchInput.value.trim().toLowerCase();
+  if (!term) {
+    // No search term: fall back to normal rendering with current filters
+    renderMap(false);
+    return;
+  }
+
+  const filtered = allRows.filter(row => {
+    const haystack = [
+      row.millName,
+      row.supplier,
+      row.material,
+      row.country,
+      row.address
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    return haystack.includes(term);
+  });
+
+  // Render only filtered rows without breaking the rest of the logic
+  markerLayer.clearLayers();
+  const bounds = [];
+
+  filtered.forEach(row => {
+    const selected = row.id === selectedId;
+    const marker = L.circleMarker([row.latitude, row.longitude], {
+      radius: selected ? 9 : 7,
+      weight: selected ? 2 : 1,
+      color: selected ? '#7c2d12' : '#0f766e',
+      fillColor: selected ? '#fb923c' : '#14b8a6',
+      fillOpacity: 0.9
+    }).addTo(markerLayer);
+
+    marker.bindPopup(popupHtml(row));
+    marker.on('click', () => fillForm(row));
+    bounds.push([row.latitude, row.longitude]);
+  });
+
+  rebuildHeat(filtered);
+  updateStats(filtered);
+}
+
+
+// Render only a given set of rows (used by search)
+function renderMapWithRows(rows) {
+  markerLayer.clearLayers();
+  if (heatLayer) {
+    map.removeLayer(heatLayer);
+    heatLayer = null;
+  }
+
+  const heatPoints = [];
+
+  rows.forEach(row => {
+    if (!Number.isFinite(row.latitude) || !Number.isFinite(row.longitude)) return;
+
+    const marker = L.marker([row.latitude, row.longitude]);
+    marker.bindPopup(`
+      <strong>${row.millName}</strong><br>
+      Supplier: ${row.supplier}<br>
+      Material: ${row.material}<br>
+      Country: ${row.country}<br>
+      Address: ${row.address || ''}<br>
+      Lat: ${row.latitude}, Lng: ${row.longitude}
+    `);
+    marker.on('click', () => {
+      selectedId = row.id;
+      fillForm(row);
+    });
+    markerLayer.addLayer(marker);
+
+    heatPoints.push([row.latitude, row.longitude, 1]);
+  });
+
+  markerLayer.addTo(map);
+
+  if (heatVisible && heatPoints.length > 0) {
+    heatLayer = L.heatLayer(heatPoints, { radius: 25, blur: 15 }).addTo(map);
+  }
+}
+
+async function geocodeAddress(address) {
+  if (!address) return null;
+
+  const url =
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(address)}`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Accept': 'application/json',
+      'User-Agent': 'KlimMillMap/1.0 (nkarabin@tetonoutfitters.com)'
+    }
+  });
+
+  if (!response.ok) {
+    console.error('Nominatim error', response.status);
+    return null;
+  }
+
+  const results = await response.json();
+  if (!results.length) {
+    console.warn('Nominatim returned no results for', address);
+    return null;
+  }
+
+  return {
+    latitude: Number(results[0].lat),
+    longitude: Number(results[0].lon)
+  };
+}
+
+async function geocodeMissingRows() {
+  console.log('geocodeMissingRows() started, rows:', allRows.length);
+  let updated = 0;
+  for (const row of allRows) {
+    if ((!Number.isFinite(row.latitude) || !Number.isFinite(row.longitude)) && row.address) {
+      try {
+        const coords = await geocodeAddress(row.address);
+        if (coords) {
+          row.latitude = coords.latitude;
+          row.longitude = coords.longitude;
+          updated += 1;
+          renderMap(false);
+        }
+      } catch (err) {
+        console.warn('Geocode failed for', row.address, err);
+      }
+      await new Promise(resolve => setTimeout(resolve, 1100));
+    }
+  }
+  if (updated > 0) {
+    renderMap(true);
+    showStatus(`Background geocoding finished for ${updated} row(s).`);
+  } else {
+    showStatus('No additional rows were geocoded.');
+  }
+}
+
+    function loadRows(rows, fit = true) {
+      allRows = rows.map(normalizeRow);
+      refreshFilters();
+      renderMap(fit);
+    }
+
+    function collectFormRow() {
+      return {
+        id: selectedId || makeId(),
+        millName: millNameInput.value.trim() || 'Unnamed Mill',
+        supplier: supplierInput.value.trim() || 'Unknown Supplier',
+        material: materialInput.value.trim() || 'Unknown Material',
+        country: countryInput.value.trim() || 'Unknown Country',
+        address: addressInput.value.trim(),
+        latitude: latitudeInput.value === '' ? NaN : Number(latitudeInput.value),
+        longitude: longitudeInput.value === '' ? NaN : Number(longitudeInput.value)
+      };
+    }
+
+async function savePoint() {
+  const row = collectFormRow();
+
+
+  // Still require coordinates before saving
+  if (!Number.isFinite(row.latitude) || !Number.isFinite(row.longitude)) {
+    showStatus('Coordinates are still missing. Add them manually or provide a more complete address.');
+    return;
+  }
+
+  // Prepare payload for backend
+  const payload = {
+    mill_name: row.millName,
+    supplier: row.supplier,
+    material: row.material,
+    country: row.country,
+    address: row.address,
+    latitude: row.latitude,
+    longitude: row.longitude
+  };
+
+  // Decide between POST (new) and PUT (update)
+  let method = 'POST';
+  let url = API_BASE;
+  const numericId = Number(row.id);
+  if (!Number.isNaN(numericId)) {
+    method = 'PUT';
+    url = `${API_BASE}/${numericId}`;
+  }
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Save failed');
+
+    // If creating new, get the id from backend
+    if (method === 'POST') {
+      const data = await res.json();
+      row.id = data.id;
+    }
+
+    // Update local array + UI as before
+    const idx = allRows.findIndex(r => r.id === row.id);
+    if (idx >= 0) {
+      allRows[idx] = row;
+      showStatus('Point updated and saved to backend.');
+    } else {
+      allRows.push(row);
+      showStatus('New point added and saved to backend.');
+    }
+    refreshFilters();
+    selectedId = row.id;
+    renderMap(false);
+    fillForm(row);
+  } catch (err) {
+    console.error(err);
+    showStatus('Backend save failed.');
+  }
+}
+
+    async function geocodeCurrentForm() {
+      const address = addressInput.value.trim();
+      if (!address) {
+        showStatus('Enter an address first.');
+        return;
+      }
+      showStatus('Geocoding current address...');
+      const coords = await geocodeAddress(address);
+      if (!coords) {
+        showStatus('No coordinates found for that address.');
+        return;
+      }
+      latitudeInput.value = coords.latitude;
+      longitudeInput.value = coords.longitude;
+      showStatus('Coordinates added from address.');
+    }
+
+async function deletePoint() {
+  if (!selectedId) {
+    showStatus('Select a point before deleting.');
+    return;
+  }
+  try {
+    const res = await fetch(`${API_BASE}/${selectedId}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Delete failed');
+    allRows = allRows.filter(r => r.id !== selectedId);
+    clearForm();
+    refreshFilters();
+    renderMap(false);
+    showStatus('Point deleted from backend.');
+  } catch (err) {
+    console.error(err);
+    showStatus('Backend delete failed.');
+  }
+}
+
+    function exportWorkbook() {
+      const exportRows = allRows.map(row => ({
+        'Mill Name': row.millName,
+        'Supplier': row.supplier,
+        'Material': row.material,
+        'Country': row.country,
+        'Address': row.address,
+        'Latitude': Number.isFinite(row.latitude) ? row.latitude : '',
+        'Longitude': Number.isFinite(row.longitude) ? row.longitude : ''
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(exportRows, {
+        header: ['Mill Name', 'Supplier', 'Material', 'Country', 'Address', 'Latitude', 'Longitude']
+      });
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+      XLSX.writeFile(workbook, 'KlimMillMap.xlsx');
+      showStatus('Workbook exported as KlimMillMap.xlsx.');
+    }
+
+    window.selectPointById = function(id) {
+      const row = allRows.find(r => r.id === id);
+      if (row) {
+        fillForm(row);
+        renderMap(false);
+      }
+    };
+
+    map.on('click', (e) => {
+      fillForm({
+        id: makeId(),
+        millName: '',
+        supplier: '',
+        material: '',
+        country: '',
+        address: '',
+        latitude: Number(e.latlng.lat.toFixed(6)),
+        longitude: Number(e.latlng.lng.toFixed(6))
+      }, 'New point from map click');
+      showStatus('New coordinates loaded into the form. Add details and save.');
+    });
+
+    [materialFilter, supplierFilter, countryFilter].forEach(el => {
+      el.addEventListener('change', () => renderMap(true));
+    });
+
+    resetFiltersBtn.addEventListener('click', () => {
+      materialFilter.value = '';
+      supplierFilter.value = '';
+      countryFilter.value = '';
+      renderMap(true);
+    });
+
+    toggleHeatBtn.addEventListener('click', () => {
+      heatVisible = !heatVisible;
+      if (heatLayer) {
+        if (heatVisible) {
+          heatLayer.addTo(map);
+          toggleHeatBtn.textContent = 'Hide heatmap';
+        } else {
+          map.removeLayer(heatLayer);
+          toggleHeatBtn.textContent = 'Show heatmap';
+        }
+      }
+    });
+
+    resetViewBtn.addEventListener('click', () => map.setView([20, 0], 2));
+    savePointBtn.addEventListener('click', savePoint);
+    newPointBtn.addEventListener('click', () => clearForm('New blank form'));
+    geocodeSelectedBtn.addEventListener('click', geocodeCurrentForm);
+    deletePointBtn.addEventListener('click', deletePoint);
+    exportBtn.addEventListener('click', exportWorkbook);
+    searchInput.addEventListener('input', applySearchFilter);
+const toolsToggle = document.getElementById('toolsToggle');
+const floatingTools = document.querySelector('.floating-tools');
+
+toolsToggle.addEventListener('click', () => {
+  const compact = floatingTools.classList.toggle('tools-compact');
+  // Update button label arrow
+  toolsToggle.textContent = compact ? 'Tools ◂' : 'Tools ▸';
+});
+
+    fileInput.addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+      clearForm();
+      loadRows(rows, true);
+      showStatus('Workbook imported. Background geocoding has started for rows missing coordinates.');
+      geocodeMissingRows();
+    });
+
+   (async function initFromApi() {
+  try {
+    const res = await fetch(API_BASE);
+    if (!res.ok) throw new Error('Failed to load mills');
+    const mills = await res.json();
+    if (Array.isArray(mills) && mills.length > 0) {
+      loadRows(mills, true);
+      showStatus('Loaded KlimMillMap from central backend.');
+      return;
+    }
+  } catch (err) {
+    console.error('Init from API failed', err);
+  }
+  // Fallback: use sample row
+  loadRows(sampleRows, true);
+  showStatus('Backend empty or unavailable, using sample data.');
+})();
+
+
+  </script>
+</body>
+</html>
