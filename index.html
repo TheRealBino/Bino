@@ -561,46 +561,50 @@ document.querySelectorAll('.collapsible-toggle').forEach(button => {
 
         // Build a carousel popup for a group of rows at the same location
         function carouselPopupHtml(group) {
-          const uid = 'c' + Math.random().toString(36).slice(2, 8);
-          const total = group.length;
-          // Store group on window keyed by uid so arrow buttons can access it
+          var uid = 'c' + Math.random().toString(36).slice(2, 8);
+          var total = group.length;
           window._carouselGroups = window._carouselGroups || {};
           window._carouselGroups[uid] = group;
           window._carouselIndex = window._carouselIndex || {};
           window._carouselIndex[uid] = 0;
 
           function slideHtml(row, idx) {
-                        return `
-              <div style="min-width:220px;line-height:1.5;position:relative;">
-                ${total > 1 ? `
-                <div style="position:absolute;top:-4px;right:0;display:flex;align-items:center;gap:2px;">
-                  <button onclick="window._carouselStep('${uid}',-1)" style="background:none;border:none;cursor:pointer;padding:1px 4px;font-size:13px;color:#0f766e;line-height:1;">&#9664;</button>
-                  <span style="font-size:11px;color:#777;white-space:nowrap;">${idx+1}/${total}</span>
-                  <button onclick="window._carouselStep('${uid}',1)" style="background:none;border:none;cursor:pointer;padding:1px 4px;font-size:13px;color:#0f766e;line-height:1;">&#9654;</button>
-                </div>` : ''}
-                <strong>${row.millName}</strong><br><br>
-                Supplier: ${row.supplier}<br>
-                Material: ${row.material}<br>
-                Country: ${row.country}<br>
-                ${row.address ? `Address: ${row.address}<br>` : ''}
-                ${Number.isFinite(row.latitude) ? `Lat: ${row.latitude}<br>` : ''}
-                ${Number.isFinite(row.longitude) ? `Lng: ${row.longitude}<br>` : ''}
-                <br>
-                <button onclick="window.selectPointById('${row.id}')" style="padding:6px 10px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;">Edit this point</button>
-              </div>
-            `;
+            var nav = '';
+            if (total > 1) {
+              nav = '<div style="position:absolute;top:-2px;right:18px;display:flex;align-items:center;gap:2px;">'
+                  + '<button onclick="window._carouselStep(\'' + uid + '\',-1)" style="background:none;border:none;cursor:pointer;padding:1px 4px;font-size:13px;color:#0f766e;">&#9664;</button>'
+                  + '<span style="font-size:11px;color:#777;">' + (idx+1) + '/' + total + '</span>'
+                  + '<button onclick="window._carouselStep(\'' + uid + '\',1)" style="background:none;border:none;cursor:pointer;padding:1px 4px;font-size:13px;color:#0f766e;">&#9654;</button>'
+                  + '</div>';
+            }
+            var addr = row.address ? 'Address: ' + row.address + '<br>' : '';
+            var lat  = (row.latitude  != null) ? 'Lat: ' + row.latitude  + '<br>' : '';
+            var lng  = (row.longitude != null) ? 'Lng: ' + row.longitude + '<br>' : '';
+            return '<div style="min-width:220px;line-height:1.5;position:relative;">'
+                 + nav
+                 + '<strong>' + row.millName + '</strong><br><br>'
+                 + 'Supplier: ' + row.supplier + '<br>'
+                 + 'Material: ' + row.material + '<br>'
+                 + 'Country: '  + row.country  + '<br>'
+                 + addr + lat + lng
+                 + '<br><button onclick="window.selectPointById(\'' + row.id + '\')" style="padding:6px 10px;border:none;border-radius:8px;background:#0f766e;color:#fff;cursor:pointer;">Edit this point</button>'
+                 + '</div>';
           }
-!grp) return;
-            const len = grp.length;
+
+          window._carouselStep = function(id, dir) {
+            var grp = window._carouselGroups[id];
+            if (!grp) return;
+            var len = grp.length;
             window._carouselIndex[id] = (window._carouselIndex[id] + dir + len) % len;
-            const idx = window._carouselIndex[id];
-            const popup = document.getElementById('carousel-' + id);
-            if (popup) popup.innerHTML = slideHtml(grp[idx], idx);
+            var idx = window._carouselIndex[id];
+            var el = document.getElementById('carousel-' + id);
+            if (el) el.innerHTML = slideHtml(grp[idx], idx);
           };
 
-          const idx = window._carouselIndex[uid] || 0;
-          return `<div id="carousel-${uid}">${slideHtml(group[idx], idx)}</div>`;
+          var i0 = window._carouselIndex[uid] || 0;
+          return '<div id="carousel-' + uid + '">' + slideHtml(group[i0], i0) + '</div>';
         }
+
 
 
     function rebuildHeat(rows) {
