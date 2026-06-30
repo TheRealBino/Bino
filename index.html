@@ -565,8 +565,8 @@ document.querySelectorAll('.collapsible-toggle').forEach(button => {
           var total = group.length;
           window._carouselGroups = window._carouselGroups || {};
           window._carouselGroups[uid] = group;
-          window._carouselIndex = window._carouselIndex || {};
-          window._carouselIndex[uid] = 0;
+          window._carouselIndex = window._carouselIndex || {}; window._slideFn = window._slideFn || {};
+          window._carouselIndex[uid] = 0; window._slideFn[uid] = slideHtml;
 
           function slideHtml(row, idx) {
             var nav = '';
@@ -598,11 +598,11 @@ document.querySelectorAll('.collapsible-toggle').forEach(button => {
             window._carouselIndex[id] = (window._carouselIndex[id] + dir + len) % len;
             var idx = window._carouselIndex[id];
             var el = document.getElementById('carousel-' + id);
-            if (el) el.innerHTML = slideHtml(grp[idx], idx);
+            if (el && window._slideFn && window._slideFn[id]) el.innerHTML = window._slideFn[id](grp[idx], idx);
           };
 
           var i0 = window._carouselIndex[uid] || 0;
-          return '<div id="carousel-' + uid + '">' + slideHtml(group[i0], i0) + '</div>';
+          return '<div id="carousel-' + uid + '">' + window._slideFn[uid](group[i0], i0) + '</div>';
         }
 
 
@@ -771,7 +771,7 @@ async function geocodeAddress(address) {
 
   const results = await response.json();
   if (!results.length) {
-    console.warn('Nominatim returned no results for', address);
+    const _p=address.trim().split(',').map(s=>s.trim()).filter(Boolean),_h={'Accept':'application/json','User-Agent':'KlimMillMap/1.0'};for(let _n=_p.length-1;_n>=1;_n--){try{const _r=await(await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(_p.slice(0,_n).join(', ')),{headers:_h})).json();if(_r&&_r.length)return{latitude:Number(_r[0].lat),longitude:Number(_r[0].lon)};}catch(e){}}console.warn('Nominatim returned no results for',address);
     return null;
   }
 
@@ -809,7 +809,7 @@ async function geocodeMissingRows() {
 }
 
     function loadRows(rows, fit = true) {
-      allRows = rows.map(normalizeRow);
+      allRows = rows.map(r => { const c={}; Object.keys(r).forEach(k=>c[String(k).trim()]=r[k]); return normalizeRow(c); });
       refreshFilters();
       renderMap(fit);
     }
