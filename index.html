@@ -462,7 +462,7 @@ window.addEventListener('resize', () => {
 document.querySelectorAll('.collapsible-toggle').forEach(button => {
   button.addEventListener('click', () => {
     const panel = button.parentElement;
-    panel.classList.toggle('collapsible-open');
+    panel.classList.toggle('collapsible-open'); setTimeout(()=>map.invalidateSize(),300);
   });
 });
 
@@ -950,7 +950,7 @@ async function deletePoint() {
       if (row) {
         fillForm(row);
         renderMap(false);
-                    const pe = document.getElementById('point-editor-section'); if (pe) { pe.classList.add('collapsible-open'); pe.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                    const pe = document.getElementById('point-editor-section'); if (pe) { pe.classList.add('collapsible-open'); const _sb=document.querySelector('.sidebar');if(_sb){_sb.scrollTo({top:pe.offsetTop,behavior:'smooth'});} }
       }
     };
 
