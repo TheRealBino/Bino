@@ -14,6 +14,28 @@ def get_db():
     conn = psycopg2.connect(DATABASE_URL)
     return conn
 
+def init_db():
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS mills (
+            id SERIAL PRIMARY KEY,
+            mill_name TEXT NOT NULL,
+            supplier TEXT NOT NULL,
+            material TEXT NOT NULL,
+            country TEXT NOT NULL,
+            address TEXT,
+            latitude REAL,
+            longitude REAL
+        );
+    """)
+    conn.commit()
+    conn.close()
+
+# Create the table on startup if it doesn't exist
+with app.app_context():
+    init_db()
+
 @app.route("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
