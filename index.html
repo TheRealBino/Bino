@@ -423,7 +423,7 @@ const map = L.map('map', {
   scrollWheelZoom: true,  // allow mouse wheel zoom
   doubleClickZoom: true,  // allow double-click zoom
   boxZoom: true,          // allow drag box zoom
-  keyboard: true          // allow +/- and arrow keys
+  keyboard: true,       closePopupOnClick: false          // allow +/- and arrow keys
 }).setView([20, 0], 2);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
