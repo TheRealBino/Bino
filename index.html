@@ -776,7 +776,7 @@ async function geocodeAddress(address,country,city) {
   }
 
   return {
-    latitude:(function(){const _c=(country||'').trim().toLowerCase();const _b=_c?results.find(r=>(r.display_name||'').toLowerCase().includes(_c)||((r.address||{}).country||'').toLowerCase().includes(_c))||results[0]:results[0];return Number(_b.lat);})()
+    latitude:(function(){const _c=(country||'').trim().toLowerCase();const _b=_c?results.find(r=>(r.display_name||'').toLowerCase().includes(_c)||((r.address||{}).country||'').toLowerCase().includes(_c))||results[0]:results[0];return Number(_b.lat);})(),
     longitude:(function(){const _c=(country||'').trim().toLowerCase();const _b=_c?results.find(r=>(r.display_name||'').toLowerCase().includes(_c)||((r.address||{}).country||'').toLowerCase().includes(_c))||results[0]:results[0];return Number(_b.lon);})()
   };
 }
