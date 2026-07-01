@@ -195,14 +195,17 @@ html, body {
   top: 8px;
   right: 8px;
   z-index: 500;
-  width: 160px;        /* default expanded width */
+  display: flex;
+      flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
 }
 
 /* Tiny header button */
 .tools-toggle {
-  width: 100%;
+    width: auto;
   padding: 3px 6px;
-  margin-bottom: 4px;
+    margin-bottom: 0;
   font-size: 0.75rem;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -210,6 +213,33 @@ html, body {
   color: var(--muted);
   cursor: pointer;
   text-align: left;
+}
+
+    /* Buttons row - globe + tools side by side */
+.tools-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+/* Globe overview button - small circle */
+#overviewBtn {
+  width: 32px;
+  height: 32px;
+  n-width: 32px;
+  padding: 2px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  line-height: 1;
+  text-align: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.95);
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: var(--shadow);
 }
 
 /* Card content */
@@ -380,7 +410,8 @@ html, body {
     <main class="map-wrap">
       <div id="map"></div>
 <div class="floating-tools">
-  <button id="overviewBtn" class="tools-toggle" type="button" title="World overview" onclick="_openOv()">&#127758;</button><button id="toolsToggle" class="tools-toggle" type="button">Tools ▸</button>
+  <div class="tools-row">
+  <button id="overviewBtn" class="tools-toggle" type="button" title="World overview" onclick="_openOv()">&#127758;</button><button id="toolsToggle" class="tools-toggle" type="button">Tools ▸</button></div>
   <div class="float-card">
     <strong>Import behavior</strong>
     <div class="muted">
@@ -751,34 +782,104 @@ function renderMapWithRows(rows) {
   }
 }
 
-async function geocodeAddress(address,country,city) {
-  if (!address) return null;
+async function geocodeAddress(address, country, city) {
+  if (!address && !city && !country) return null;
 
-  const url =
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&q=${encodeURIComponent(address)}`;
+  const HEADERS = {
+    'Accept': 'application/json',
+    'User-Agent': 'KlimMillMap/1.0 (nkarabin@tetonoutfitters.com)'
+  };
 
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'application/json',
-      'User-Agent': 'KlimMillMap/1.0 (nkarabin@tetonoutfitters.com)'
+  // Helper: fetch one query from Nominatim, return {latitude, longitude} or null
+  async function tryQuery(q) {
+    if (!q || !q.trim()) return null;
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=${encodeURIComponent(q.trim())}`;
+      const r = await fetch(url, { headers: HEADERS });
+      if (!r.ok) return null;
+      const data = await r.json();
+      if (!data || !data.length) return null;
+      // Prefer results with higher importance score
+      const best = data.sort((a, b) => (b.importance || 0) - (a.importance || 0))[0];
+      return { latitude: parseFloat(best.lat), longitude: parseFloat(best.lon) };
+    } catch (e) {
+      return null;
     }
+  }
+
+  // --- Step 1: Normalize the raw address string ---
+  // Strip leading apartment/unit/suite prefixes (e.g. "Apt 3B,", "Suite 100,", "#4,")
+  function stripApt(s) {
+    return s
+      .replace(/^\s*(apt\.?|apartment|suite|ste\.?|unit|#|no\.?|floor|fl\.?)\s*[\w\-]+[,\s]*/i, '')
+      .trim();
+  }
+
+  // Strip zip/postal code segments (5-digit US zip or similar)
+  function stripZip(s) {
+    return s.replace(/\b\d{5}(-\d{4})?\b/g, '').replace(/,\s*,/g, ',').trim();
+  }
+
+  // Build an ordered list of query strings to try, from most to least specific
+  const rawAddr = (address || '').trim();
+  const rawCity = (city || '').trim();
+  const rawCountry = (country || '').trim();
+
+  // Parse address parts by comma
+  const addrParts = rawAddr.split(',').map(p => p.trim()).filter(Boolean);
+
+  // Generate candidate queries (most specific first)
+  const candidates = [];
+
+  // Full address as-is
+  if (rawAddr) candidates.push(rawAddr + (rawCountry ? ', ' + rawCountry : ''));
+
+  // Strip apt/unit from first component, retry
+  if (addrParts.length > 0) {
+    const noApt = [stripApt(addrParts[0]), ...addrParts.slice(1)].filter(Boolean).join(', ');
+    if (noApt !== rawAddr) candidates.push(noApt + (rawCountry ? ', ' + rawCountry : ''));
+  }
+
+  // Strip zip codes, retry
+  if (rawAddr) {
+    const noZip = stripZip(rawAddr);
+    if (noZip !== rawAddr) candidates.push(noZip + (rawCountry ? ', ' + rawCountry : ''));
+  }
+
+  // Progressive fallback: drop leading address parts one at a time
+  // (removes apt -> street number -> street -> ...) keeping city/country
+  for (let i = 1; i < addrParts.length; i++) {
+    const partial = addrParts.slice(i).join(', ');
+    if (partial) candidates.push(partial + (rawCountry ? ', ' + rawCountry : ''));
+  }
+
+  // City + country fallback
+  if (rawCity && rawCountry) candidates.push(rawCity + ', ' + rawCountry);
+  else if (rawCity) candidates.push(rawCity);
+
+  // Country only as last resort
+  if (rawCountry) candidates.push(rawCountry);
+
+  // Deduplicate candidates
+  const seen = new Set();
+  const uniqueCandidates = candidates.filter(c => {
+    const key = c.toLowerCase().replace(/\s+/g, ' ');
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 
-  if (!response.ok) {
-    console.error('Nominatim error', response.status);
-    return null;
+  // --- Step 2: Try each candidate in order ---
+  for (const q of uniqueCandidates) {
+    const result = await tryQuery(q);
+    if (result && Number.isFinite(result.latitude) && Number.isFinite(result.longitude)) {
+      return result;
+    }
+    // Nominatim rate limit: 1 req/sec
+    await new Promise(res => setTimeout(res, 1100));
   }
 
-  const results = await response.json();
-  if (!results.length) {
-    const _h={'Accept':'application/json','User-Agent':'KlimMillMap/1.0'};const _p=address.trim().split(',').map(s=>s.trim()).filter(Boolean);const _tryQ=async(q)=>{try{const _r=await(await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(q),{headers:_h})).json();if(_r&&_r.length)return{latitude:Number(_r[0].lat),longitude:Number(_r[0].lon)};}catch(e){}return null;};for(let _n=_p.length-1;_n>=1;_n--){const _res=await _tryQ(_p.slice(0,_n).join(', '));if(_res)return _res;}if(city&&country){const _res=await _tryQ(city+', '+country);if(_res)return _res;}if(country){const _res=await _tryQ(country);if(_res)return _res;}console.warn('Nominatim returned no results for',address);
-    return null;
-  }
-
-  return {
-    latitude:(function(){const _c=(country||'').trim().toLowerCase();const _b=_c?results.find(r=>(r.display_name||'').toLowerCase().includes(_c)||((r.address||{}).country||'').toLowerCase().includes(_c))||results[0]:results[0];return Number(_b.lat);})(),
-    longitude:(function(){const _c=(country||'').trim().toLowerCase();const _b=_c?results.find(r=>(r.display_name||'').toLowerCase().includes(_c)||((r.address||{}).country||'').toLowerCase().includes(_c))||results[0]:results[0];return Number(_b.lon);})()
-  };
+  return null;
 }
 
 async function geocodeMissingRows() {
