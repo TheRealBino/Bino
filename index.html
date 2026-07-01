@@ -425,7 +425,7 @@ const map = L.map('map', {
   boxZoom: true,          // allow drag box zoom
   keyboard: true,       closePopupOnClick: false          // allow +/- and arrow keys
 }).setView([20, 0], 2);
-    L.TileLayer.extend({getTileUrl:function(c){const n=Math.pow(2,c.z);const y=((c.y%n)+n)%n;return L.Util.template(this._url,L.extend({},this.options,{x:c.x,y:y,z:c.z}));}})('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    new (L.TileLayer.extend({getTileUrl:function(c){const n=Math.pow(2,c.z);const y=((c.y%n)+n)%n;return L.Util.template(this._url,L.extend({},this.options,{x:c.x,y:y,z:c.z}));}}))('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
     }).addTo(map);
