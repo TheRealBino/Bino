@@ -1102,11 +1102,13 @@ async function deletePoint() {
     searchInput.addEventListener('input', applySearchFilter);
 const toolsToggle = document.getElementById('toolsToggle');
 const floatingTools = document.querySelector('.floating-tools');
+    const floatCard = floatingTools.querySelector('.float-card');
 
 toolsToggle.addEventListener('click', () => {
   const compact = floatingTools.classList.toggle('tools-compact');
+      floatCard.style.display = compact ? 'none' : 'block';
   // Update button label arrow
-  toolsToggle.textContent = compact ? 'Tools ◂' : 'Tools ▸';
+      toolsToggle.textContent = compact ? 'Tools ▸' : 'Tools ◂';
 });
 
     fileInput.addEventListener('change', async (event) => {
