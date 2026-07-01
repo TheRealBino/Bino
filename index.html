@@ -1039,7 +1039,31 @@ toolsToggle.addEventListener('click', () => {
   showStatus('Backend empty or unavailable, using sample data.');
 })();
 
+        // Password lock + map bounds
+    window._unlockApp=function(){
+      var p=document.getElementById('lockPwd').value;
+      if(p==='KlimHQ2025'){document.getElementById('lockScreen').style.display='none';}
+      else{document.getElementById('lockErr').textContent='Incorrect password.';document.getElementById('lockPwd').value='';document.getElementById('lockPwd').focus();}
+    };
+    setTimeout(function(){
+      var lp=document.getElementById('lockPwd');if(lp)lp.focus();
+      if(typeof map!=='undefined'){
+        map.setMaxBounds([[-85.05,-Infinity],[85.05,Infinity]]);
+        map.options.maxBoundsViscosity=1.0;
+      }
+    },500);
+
 
   </script>
+  <div id="lockScreen" style="position:fixed;inset:0;z-index:99999;background:#1a1a2e;display:flex;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:2.5rem 2rem;text-align:center;max-width:340px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
+      <div style="font-size:3rem;margin-bottom:0.5rem;">&#128274;</div>
+      <h2 style="margin:0 0 0.25rem;font-size:1.4rem;color:#1a1a2e;">KlimHQ Mill Map</h2>
+      <p style="margin:0 0 1.5rem;color:#666;font-size:0.9rem;">Enter password to continue</p>
+      <input id="lockPwd" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;box-sizing:border-box;padding:0.65rem 0.9rem;border:2px solid #ddd;border-radius:6px;font-size:1rem;margin-bottom:0.5rem;" onkeydown="if(event.key==='Enter')window._unlockApp()">
+      <div id="lockErr" style="color:#e74c3c;font-size:0.85rem;margin-bottom:0.75rem;min-height:1.1em;"></div>
+      <button onclick="window._unlockApp()" style="width:100%;padding:0.7rem;background:#FFD200;border:none;border-radius:6px;font-size:1rem;font-weight:700;cursor:pointer;">Unlock</button>
+    </div>
+  </div>
 </body>
 </html>
